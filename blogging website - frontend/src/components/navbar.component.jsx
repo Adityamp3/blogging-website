@@ -7,7 +7,9 @@ const Navbar = () => {
         <img src={logo} alt="load nhi hui" />
       </Link>
 
-      <div className="absolute bg-white w-full left-0 top-full mt-0.5 border-b border-grey"></div>
+      <div className="absolute bg-white w-full left-0 top-full mt-0.5 border-b border-grey">
+        <input type="text" placeholder="Search" className="w-full md:w-auto bg-grey p-4 pl-6 pr-[12%] md:pr-6 rounded-full "/>
+      </div>
     </nav>
   );
 };
