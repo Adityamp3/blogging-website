@@ -9,6 +9,7 @@ import { storeInSession } from "../common/session";
 import { UserContext } from "../App";
 
 const UserAuthForm = ({ type }) => {
+  // Right now, we are using ref to get the form data but we can also get it done by passing an id to the form and then pass the form id to the form element.
   const authForm = useRef();
 
   let {

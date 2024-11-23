@@ -1,0 +1,5 @@
+POST http://localhost/signup
+Content-Type: application/json
+{
+    "fullname": "Aditya Raj"
+}
