@@ -9,7 +9,7 @@ import admin from "firebase-admin";
 import serviceAccountKey from "./blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json" assert { type: "json" };
 import { getAuth } from "firebase-admin/auth";
 import aws from "aws-sdk";
-import url from "url";
+// import url from "url";
 
 //Schemas
 import User from "./Schema/User.js";
@@ -38,11 +38,12 @@ const s3 = new aws.S3({
 });
 
 const generateUploadURL = async () => {
+
   const date = new Date();
   const imageName = `${nanoid()}-${date.getTime()}.jpeg`;
 
   return await s3.getSignedUrlPromise("putObject", {
-    Bucket: "blogging-website-react-aws",
+    Bucket: 'blogging-website-react-aws',
     Key: imageName,
     Expires: 1000,
     ContentType: "image/jpeg",
@@ -79,11 +80,11 @@ const generateUsername = async (email) => {
 server.get("/get-upload-url", (req, res) => {
   generateUploadURL()
     .then((url) => res.status(200).json({ uploadURL: url }))
-    .catch((err) => {
+    .catch(err => {
       console.log(err.message);
-      if (!res.headersSent) {
+      // if (!res.headersSent) {
         return res.status(500).json({ error: err.message });
-      }
+      // }
     });
 });
 
