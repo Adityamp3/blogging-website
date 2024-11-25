@@ -8,6 +8,8 @@ import cors from "cors";
 import admin from "firebase-admin";
 import serviceAccountKey from "./blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json" assert { type: "json" };
 import { getAuth } from "firebase-admin/auth";
+import aws from "aws-sdk";
+import url from "url";
 
 //Schemas
 import User from "./Schema/User.js";
@@ -28,6 +30,24 @@ server.use(cors());
 mongoose.connect(process.env.DB_LOCATION, {
   autoIndex: true,
 });
+
+const s3 = new aws.S3({
+  accessKeyId: process.env.AWS_ACCESS_KEY,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: "eu-north-1",
+});
+
+const generateUploadURL = async () => {
+  const date = new Date();
+  const imageName = `${nanoid()}-${date.getTime()}.jpeg`;
+
+  return await s3.getSignedUrlPromise("putObject", {
+    Bucket: "blogging-website-react-aws",
+    Key: imageName,
+    Expires: 1000,
+    ContentType: "image/jpeg",
+  });
+};
 
 const formatDataToSend = (user) => {
   const access_token = jwt.sign(
@@ -54,6 +74,18 @@ const generateUsername = async (email) => {
 
   return username;
 };
+
+// upload image url route
+server.get("/get-upload-url", (req, res) => {
+  generateUploadURL()
+    .then((url) => res.status(200).json({ uploadURL: url }))
+    .catch((err) => {
+      console.log(err.message);
+      if (!res.headersSent) {
+        return res.status(500).json({ error: err.message });
+      }
+    });
+});
 
 server.post("/signup", (req, res) => {
   let { fullname, email, password } = req.body;
@@ -115,18 +147,18 @@ server.post("/signin", (req, res) => {
               .status(403)
               .json({ error: "Error occured while login. Please try again" });
           }
-  
+
           if (!result) {
             return res.status(403).json({ error: "Incorrect password" });
           } else {
             return res.status(200).json(formatDataToSend(user));
           }
         });
-
       } else {
-        return res.status(403).json({ error: "Account was created using google. Please login with google" });
+        return res.status(403).json({
+          error: "Account was created using google. Please login with google",
+        });
       }
-      
     })
     .catch((err) => {
       console.log(err.message);
@@ -135,7 +167,6 @@ server.post("/signin", (req, res) => {
 });
 
 server.post("/google-auth", async (req, res) => {
-
   let { access_token } = req.body;
 
   getAuth()
@@ -159,12 +190,10 @@ server.post("/google-auth", async (req, res) => {
 
       if (user) {
         if (!user.google_auth) {
-          return res
-            .status(403)
-            .json({
-              error:
-                "This email was signed up without google. Please login with email and password",
-            });
+          return res.status(403).json({
+            error:
+              "This email was signed up without google. Please login with email and password",
+          });
         }
       } else {
         let username = await generateUsername(email);
@@ -173,7 +202,7 @@ server.post("/google-auth", async (req, res) => {
           personal_info: {
             fullname: name,
             email,
-            username
+            username,
           },
           google_auth: true,
         });
@@ -189,10 +218,12 @@ server.post("/google-auth", async (req, res) => {
       }
 
       return res.status(200).json(formatDataToSend(user));
-      
     })
     .catch((err) => {
-      return res.status(500).json({ "error": "Failed to authenticate you with google. Try with some other google account" });
+      return res.status(500).json({
+        error:
+          "Failed to authenticate you with google. Try with some other google account",
+      });
     });
 });
 
