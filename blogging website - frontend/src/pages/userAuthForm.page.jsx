@@ -7,6 +7,7 @@ import { Toaster, toast } from "react-hot-toast";
 import axios from "axios";
 import { storeInSession } from "../common/session";
 import { UserContext } from "../App";
+import { authWithGoogle } from "../common/firebase";
 
 const UserAuthForm = ({ type }) => {
   // Right now, we are using ref to get the form data but we can also get it done by passing an id to the form and then pass the form id to the form element.
@@ -24,8 +25,8 @@ const UserAuthForm = ({ type }) => {
     axios
       .post(import.meta.env.VITE_SERVER_DOMAIN + serverRoute, formData)
       .then(({ data }) => {
-        console.log(data);
         storeInSession("user", JSON.stringify(data));
+        console.log(sessionStorage);
 
         setUserAuth(data);
       })
@@ -74,6 +75,29 @@ const UserAuthForm = ({ type }) => {
     }
 
     userAuthThroughServer(serverRoute, formData);
+  };
+
+  const handleGoogleAuth = (e) => {
+    
+    e.preventDefault();
+
+    authWithGoogle().then(user => {
+      
+      let serverRoute = "/google-auth";
+
+      let formData = {
+        access_token: user.accessToken
+      }
+
+      userAuthThroughServer(serverRoute, formData);
+
+    })
+    .catch((error) => {
+      toast.error('Trouble Login through Google');
+      return console.log(error.message);
+    });
+      
+
   };
 
   return (
@@ -127,7 +151,7 @@ const UserAuthForm = ({ type }) => {
             <hr className="w-1/2 border-black" />
           </div>
 
-          <button className="btn-dark flex items-center justify-center gap-4 w-[90%] center">
+          <button onClick={handleGoogleAuth} className="btn-dark flex items-center justify-center gap-4 w-[90%] center">
             <img src={googleIcon} className="w-5 " />
             continue with google
           </button>

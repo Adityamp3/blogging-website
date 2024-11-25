@@ -1,4 +1,4 @@
-const storeInSession = (key, value) => {
+ const storeInSession = (key, value) => {
     return sessionStorage.setItem(key, value);
 }
 

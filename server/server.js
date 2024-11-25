@@ -3,14 +3,21 @@ import mongoose from "mongoose";
 import "dotenv/config";
 import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
-import  jwt  from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import cors from "cors";
+import admin from "firebase-admin";
+import serviceAccountKey from "./blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json" assert { type: "json" };
+import { getAuth } from "firebase-admin/auth";
 
 //Schemas
 import User from "./Schema/User.js";
 
 const server = express();
 let PORT = 3000;
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccountKey),
+});
 
 let emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/; // regex for email
 let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // regex for password
@@ -22,10 +29,11 @@ mongoose.connect(process.env.DB_LOCATION, {
   autoIndex: true,
 });
 
-
 const formatDataToSend = (user) => {
-
-  const access_token = jwt.sign({ id : user._id }, process.env.SECRET_ACCESS_KEY)  
+  const access_token = jwt.sign(
+    { id: user._id },
+    process.env.SECRET_ACCESS_KEY
+  );
 
   return {
     access_token,
@@ -63,12 +71,10 @@ server.post("/signup", (req, res) => {
     return res.status(403).json({ error: "Email is invalid" });
   }
   if (!passwordRegex.test(password)) {
-    return res
-      .status(403)
-      .json({
-        error:
-          "Password must contain at least one number, one uppercase letter, one lowercase letter, and at least 6 characters",
-      });
+    return res.status(403).json({
+      error:
+        "Password must contain at least one number, one uppercase letter, one lowercase letter, and at least 6 characters",
+    });
   }
 
   bcrypt.hash(password, 10, async (err, hashed_password) => {
@@ -91,37 +97,103 @@ server.post("/signup", (req, res) => {
         return res.status(500).json({ error: err.message });
       });
   });
-
 });
 
-server.post("/signin", (req, res)=>{
-    let {email, password} = req.body;
+server.post("/signin", (req, res) => {
+  let { email, password } = req.body;
 
-    User.findOne({ "personal_info.email": email })
-    .then((user)=>{
-        if(!user){
-            return res.status(403).json({ "error": "Email not found" });
-        }
+  User.findOne({ "personal_info.email": email })
+    .then((user) => {
+      if (!user) {
+        return res.status(403).json({ error: "Email not found" });
+      }
 
+      if (!user.google_auth) {
         bcrypt.compare(password, user.personal_info.password, (err, result) => {
+          if (err) {
+            return res
+              .status(403)
+              .json({ error: "Error occured while login. Please try again" });
+          }
+  
+          if (!result) {
+            return res.status(403).json({ error: "Incorrect password" });
+          } else {
+            return res.status(200).json(formatDataToSend(user));
+          }
+        });
 
-            if(err){
-                return res.status(403).json({ "error": "Error occured while login. Please try again" });
-            }
+      } else {
+        return res.status(403).json({ error: "Account was created using google. Please login with google" });
+      }
+      
+    })
+    .catch((err) => {
+      console.log(err.message);
+      return res.status(403).json({ error: err.message });
+    });
+});
 
-            if(!result){
-                return res.status(403).json({ "error": "Incorrect password" })
-            } else{
-                return res.status(200).json(formatDataToSend(user))
-            }
+server.post("/google-auth", async (req, res) => {
 
+  let { access_token } = req.body;
+
+  getAuth()
+    .verifyIdToken(access_token)
+    .then(async (decodedUser) => {
+      let { email, name, picture } = decodedUser;
+
+      picture = picture.replace("s96-c", "s384-c");
+      // picture = picture.replace("s96-c", "s400-c");
+
+      let user = await User.findOne({ "personal_info.email": email })
+        .select(
+          "personal_info.fullname personal_info.username personal_info.profile_img google_auth"
+        )
+        .then((user) => {
+          return user || null;
         })
-        
+        .catch((err) => {
+          return res.status(500).json({ error: err.message });
+        });
+
+      if (user) {
+        if (!user.google_auth) {
+          return res
+            .status(403)
+            .json({
+              error:
+                "This email was signed up without google. Please login with email and password",
+            });
+        }
+      } else {
+        let username = await generateUsername(email);
+
+        user = new User({
+          personal_info: {
+            fullname: name,
+            email,
+            username
+          },
+          google_auth: true,
+        });
+
+        await user
+          .save()
+          .then((u) => {
+            user = u;
+          })
+          .catch((err) => {
+            return res.status(500).json({ error: err.message });
+          });
+      }
+
+      return res.status(200).json(formatDataToSend(user));
+      
     })
-    .catch(err => {
-        console.log(err.message);
-        return res.status(403).json({ "error": err.message })
-    })
+    .catch((err) => {
+      return res.status(500).json({ "error": "Failed to authenticate you with google. Try with some other google account" });
+    });
 });
 
 server.listen(PORT, () => {
