@@ -5,17 +5,20 @@ import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import cors from "cors";
-import admin from "firebase-admin";
-import serviceAccountKey from "./blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json" assert { type: "json" };
-import { getAuth } from "firebase-admin/auth";
 import aws from "aws-sdk";
+
+import admin from "firebase-admin";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const serviceAccountKey = require("./blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json")
+import { getAuth } from "firebase-admin/auth";
 // import url from "url";
 
 //Schemas
 import User from "./Schema/User.js";
 
 const server = express();
-let PORT = 3000;
+let PORT = 3001;
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccountKey),
@@ -38,12 +41,11 @@ const s3 = new aws.S3({
 });
 
 const generateUploadURL = async () => {
-
   const date = new Date();
   const imageName = `${nanoid()}-${date.getTime()}.jpeg`;
 
   return await s3.getSignedUrlPromise("putObject", {
-    Bucket: 'blogging-website-react-aws',
+    Bucket: "blogging-website-react-aws",
     Key: imageName,
     Expires: 1000,
     ContentType: "image/jpeg",
@@ -80,10 +82,10 @@ const generateUsername = async (email) => {
 server.get("/get-upload-url", (req, res) => {
   generateUploadURL()
     .then((url) => res.status(200).json({ uploadURL: url }))
-    .catch(err => {
+    .catch((err) => {
       console.log(err.message);
       // if (!res.headersSent) {
-        return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: err.message });
       // }
     });
 });
@@ -214,7 +216,7 @@ server.post("/google-auth", async (req, res) => {
             user = u;
           })
           .catch((err) => {
-            return res.status(500).json({ error: err.message });
+            return res.status(500).json({ "error": err.message });
           });
       }
 
@@ -222,7 +224,7 @@ server.post("/google-auth", async (req, res) => {
     })
     .catch((err) => {
       return res.status(500).json({
-        error:
+        "error":
           "Failed to authenticate you with google. Try with some other google account",
       });
     });
