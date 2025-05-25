@@ -9,4 +9,4 @@ server/.env
 server/blogging-website-202c6-firebase-adminsdk-z0n2u-9f830f09ee.json
 
 # firebase keys
-blogging website - frontend/src/common/firebase.jsx
+# blogging website - frontend/src/common/firebase.jsx
