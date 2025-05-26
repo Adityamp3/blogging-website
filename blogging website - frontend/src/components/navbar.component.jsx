@@ -1,6 +1,6 @@
 import { useContext, useState } from "react";
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import logo from "../imgs/logo.png";
+import logo from "../../public/assets/Logo.png";
 import { UserContext } from "../App";
 import UserNavigationPanel from "./user-navigation.component";
 
