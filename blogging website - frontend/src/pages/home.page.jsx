@@ -20,9 +20,9 @@ const HomePage = () => {
     "communication",
     "selfcare",
     "health",
-    "travel",
-    "food",
-    "lifestyle",
+    "sharda",
+    "abhivyakti",
+    "mental health",
   ];
 
   const fetchLatestBlogs = ({ page = 1 }) => {
